@@ -1,0 +1,91 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+"""
+PROYECTO: Area Sonny Angel
+--------------------------
+Este script calcula el porcentaje de área que ocupa un objeto (Sonny Angel) 
+sobre un fondo blanco utilizando el método de Montecarlo (puntos aleatorios).
+
+El objetivo es comparar visualmente qué figuras ocupan más espacio para 
+estimar posibles diferencias de peso en cajas cerradas.
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
+import os
+
+def calcular_area(image_path):
+    """Carga una imagen, aplica binarización y calcula el área ocupada."""
+    if not os.path.exists(image_path):
+        print(f"Archivo no encontrado: {image_path}")
+        return None, None
+
+    # 1. Cargar la imagen y convertir a escala de grises
+    image = Image.open(image_path).convert("L")
+    image_array = np.array(image)
+    
+    # Dimensiones y área total
+    height, width = image_array.shape
+    rect_area = height * width
+    
+    # 2. Configurar simulación de Montecarlo
+    num_points = 100000 
+    x_random = np.random.uniform(0, width, num_points).astype(int)
+    y_random = np.random.uniform(0, height, num_points).astype(int)
+    
+    # 3. Contar puntos dentro de la figura (umbral < 245 es "no blanco")
+    inside_count = 0
+    for x, y in zip(x_random, y_random):
+        if image_array[y, x] < 245: 
+            inside_count += 1
+    
+    # 4. Calcular resultados
+    region_area = rect_area * (inside_count / num_points)
+    porcentaje_area = (region_area / rect_area) * 100
+    
+    return porcentaje_area, image
+
+# --- LISTA DE IMÁGENES A PROCESAR ---
+# Asegúrate de que estas imágenes estén en la misma carpeta que este archivo .py
+imagenes_rutas = [
+    'angel_ejemplo_1.jpg', 
+    'angel_ejemplo_2.jpg', 
+    'angel_ejemplo_3.jpg'
+]
+
+def ejecutar_analisis():
+    areas_imagenes = []
+
+    # Procesar cada imagen de la lista
+    for ruta in imagenes_rutas:
+        area, imagen = calcular_area(ruta)
+        if area is not None:
+            areas_imagenes.append((area, imagen, ruta))
+
+    # Ordenar por área de mayor a menor
+    areas_imagenes.sort(key=lambda x: x[0], reverse=True)
+
+    # Mostrar resultados finales
+    if areas_imagenes:
+        num_imgs = len(areas_imagenes)
+        fig, axes = plt.subplots(1, num_imgs, figsize=(5 * num_imgs, 5))
+        
+        # Corregir si solo hay una imagen para que axes sea una lista
+        if num_imgs == 1:
+            axes = [axes]
+            
+        for i, (area, imagen, ruta) in enumerate(areas_imagenes):
+            axes[i].imshow(imagen, cmap='gray')
+            axes[i].set_title(f"Área: {area:.2f}%")
+            axes[i].axis('off')
+            print(f"Resultado: {ruta} ocupa un {area:.2f}% de la imagen.")
+        
+        plt.tight_layout()
+        plt.show()
+    else:
+        print("No se procesaron imágenes. Verifica que los nombres de archivo coincidan.")
+
+if __name__ == "__main__":
+    ejecutar_analisis()
